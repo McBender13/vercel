@@ -15,8 +15,6 @@ type Exchange = { round:number; userOpening:string; aiRebuttal:string; userFollo
 type SavedDebate = { id:string; createdAt:string; sport:string; take:string; difficulty:Difficulty; side:Side; mode?:DebateMode; kind?:DebateKind; result:"win"|"loss"|"draw"; userTotal:number; aiTotal:number; exchanges:Exchange[] };
 
 const STORAGE_KEY="sports-debate-arena-history-v1";
-const TRENDING_CACHE_KEY="sports-debate-trending-cache-v1";
-const SEARCH_CACHE_KEY="sports-debate-search-cache-v1";
 function dailyDebate(date=new Date()){
   const day=Math.floor(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate())/86400000);
   const sports=Object.keys(TAKES);
@@ -83,161 +81,6 @@ function buildPracticeFeedback(opening:string,followup:string,take:string,side:S
 }
 
 
-type SearchEntity = { name:string; sport:string; kind:"team"|"player"|"league"|"draft"; aliases?:string[]; prompts?:string[] };
-type SearchTopic = { sport:string; take:string; keywords:string[]; category?:string };
-
-const TEAM_TEMPLATES:Record<string,string[]>= {
-  Soccer:[
-    "{name} should prioritize winning now over developing young players.",
-    "{name}'s current manager is the right person to lead the club long term.",
-    "{name} should spend aggressively in the next transfer window.",
-    "{name}'s greatest-ever team would beat its current squad.",
-    "{name} should value tactical fit more than star power when signing players."
-  ],
-  Football:[
-    "{name} should prioritize building around the quarterback over strengthening the defense.",
-    "{name} should trade future draft picks to maximize its current championship window.",
-    "{name}'s head coach is the right person to lead the franchise long term.",
-    "{name} should pay elite players top-market contracts even if depth suffers.",
-    "{name}'s best team in franchise history would succeed in today's NFL."
-  ],
-  Basketball:[
-    "{name} should prioritize roster depth over adding another superstar.",
-    "{name} should trade future first-round picks to maximize its current title window.",
-    "{name}'s current core is good enough to win a championship.",
-    "{name}'s greatest team would dominate in today's NBA.",
-    "{name} should make defense its top roster-building priority."
-  ],
-  Hockey:[
-    "{name} should trade a first-round pick to improve its current playoff chances.",
-    "{name}'s current core is capable of winning the Stanley Cup.",
-    "{name} should prioritize goaltending over adding more scoring.",
-    "{name}'s greatest team would thrive in today's NHL.",
-    "{name} should be more patient with young players instead of chasing veterans."
-  ],
-  Baseball:[
-    "{name} should trade top prospects to maximize its current championship window.",
-    "{name} should spend more aggressively in free agency.",
-    "{name}'s current core is capable of winning the World Series.",
-    "{name}'s greatest team would succeed in today's MLB.",
-    "{name} should prioritize pitching over adding another star hitter."
-  ],
-  "College Sports":[
-    "{name} should prioritize recruiting high-school players over transfer-portal additions.",
-    "{name}'s current coach is the right person to lead the program long term.",
-    "{name} should value conference championships as much as national-title contention.",
-    "{name}'s tradition gives it an advantage in the modern NIL era.",
-    "{name} should be more aggressive in the transfer portal."
-  ]
-};
-
-const PLAYER_TEMPLATES:Record<string,string[]>= {
-  Soccer:[
-    "{name} is one of the greatest players of this generation.",
-    "{name}'s peak matters more than career longevity when judging the player's legacy.",
-    "{name} would be just as dominant in a different tactical era.",
-    "{name}'s international career should carry major weight in all-time rankings.",
-    "{name} is more valuable for overall impact than raw goals and assists suggest."
-  ],
-  Basketball:[
-    "{name} belongs in the all-time top ten.",
-    "{name}'s peak is more impressive than the player's career longevity.",
-    "{name} would be even more dominant in today's NBA.",
-    "{name}'s playoff résumé is the strongest part of the player's legacy.",
-    "{name} impacts winning more than traditional box-score statistics show."
-  ],
-  Football:[
-    "{name} belongs among the greatest players ever at the position.",
-    "{name}'s peak matters more than career longevity when judging the player's legacy.",
-    "{name} would be just as dominant in today's NFL.",
-    "{name}'s playoff performance should carry more weight than regular-season statistics.",
-    "{name} changes winning more than traditional statistics show."
-  ],
-  Hockey:[
-    "{name} belongs among the greatest players ever at the position.",
-    "{name}'s peak matters more than career longevity when judging the player's legacy.",
-    "{name} would be just as dominant in today's NHL.",
-    "{name}'s playoff résumé should carry major weight in all-time rankings.",
-    "{name}'s two-way impact is underrated."
-  ],
-  Baseball:[
-    "{name} belongs among the greatest players ever at the position.",
-    "{name}'s peak matters more than career longevity when judging the player's legacy.",
-    "{name} would be just as dominant in today's MLB.",
-    "{name}'s postseason résumé should carry more weight in all-time rankings.",
-    "{name}'s overall value is better measured by advanced statistics than traditional totals."
-  ],
-  UFC:[
-    "{name} belongs in the UFC's all-time top ten.",
-    "{name}'s peak matters more than longevity when judging the fighter's legacy.",
-    "{name} would succeed against champions from any era.",
-    "{name}'s quality of competition is the strongest part of the fighter's résumé.",
-    "{name}'s style is more difficult to solve than the record alone suggests."
-  ],
-  Tennis:[
-    "{name} belongs in tennis's all-time top five.",
-    "{name}'s peak matters more than career longevity when judging the player's legacy.",
-    "{name} would be just as dominant across different court surfaces and eras.",
-    "{name}'s major-title total is the strongest measure of the player's greatness.",
-    "{name}'s mental strength is the most important part of the player's game."
-  ],
-  "Formula 1":[
-    "{name} belongs among Formula 1's greatest drivers ever.",
-    "{name}'s peak pace matters more than championship totals.",
-    "{name} would succeed in any era of Formula 1.",
-    "{name}'s teammate record is the strongest evidence of the driver's ability.",
-    "{name}'s success is driven more by talent than machinery."
-  ],
-  Golf:[
-    "{name} belongs among golf's greatest players ever.",
-    "{name}'s peak matters more than career longevity when judging the player's legacy.",
-    "{name} would be just as dominant against modern fields.",
-    "{name}'s major record is the strongest measure of the player's greatness.",
-    "{name}'s mental game is the biggest reason for the player's success."
-  ]
-};
-
-const SEARCH_ENTITIES:SearchEntity[] = [
-  // Soccer clubs
-  ...["Arsenal","Liverpool","Manchester United","Manchester City","Chelsea","Tottenham Hotspur","Newcastle United","Aston Villa","West Ham United","Everton","Brighton","Brentford","Crystal Palace","Fulham","Nottingham Forest","Real Madrid","Barcelona","Atlético Madrid","Sevilla","Valencia","Villarreal","Athletic Club","Bayern Munich","Borussia Dortmund","Bayer Leverkusen","RB Leipzig","Juventus","Inter Milan","AC Milan","Napoli","Roma","Lazio","Paris Saint-Germain","Marseille","Lyon","Monaco","Benfica","Porto","Sporting CP","Ajax","PSV","Feyenoord","Celtic","Rangers"].map(name=>({name,sport:"Soccer",kind:"team" as const,aliases:name==="Manchester United"?["man united","man utd","united"]:name==="Manchester City"?["man city","city"]:name==="Tottenham Hotspur"?["tottenham","spurs"]:name==="Paris Saint-Germain"?["psg"]:name==="Inter Milan"?["inter"]:name==="AC Milan"?["milan"]:undefined})),
-  // NFL teams
-  ...["Arizona Cardinals","Atlanta Falcons","Baltimore Ravens","Buffalo Bills","Carolina Panthers","Chicago Bears","Cincinnati Bengals","Cleveland Browns","Dallas Cowboys","Denver Broncos","Detroit Lions","Green Bay Packers","Houston Texans","Indianapolis Colts","Jacksonville Jaguars","Kansas City Chiefs","Las Vegas Raiders","Los Angeles Chargers","Los Angeles Rams","Miami Dolphins","Minnesota Vikings","New England Patriots","New Orleans Saints","New York Giants","New York Jets","Philadelphia Eagles","Pittsburgh Steelers","San Francisco 49ers","Seattle Seahawks","Tampa Bay Buccaneers","Tennessee Titans","Washington Commanders"].map(name=>({name,sport:"Football",kind:"team" as const,aliases:[name.split(" ").slice(-1)[0].toLowerCase()]})),
-  // NBA teams
-  ...["Atlanta Hawks","Boston Celtics","Brooklyn Nets","Charlotte Hornets","Chicago Bulls","Cleveland Cavaliers","Dallas Mavericks","Denver Nuggets","Detroit Pistons","Golden State Warriors","Houston Rockets","Indiana Pacers","Los Angeles Clippers","Los Angeles Lakers","Memphis Grizzlies","Miami Heat","Milwaukee Bucks","Minnesota Timberwolves","New Orleans Pelicans","New York Knicks","Oklahoma City Thunder","Orlando Magic","Philadelphia 76ers","Phoenix Suns","Portland Trail Blazers","Sacramento Kings","San Antonio Spurs","Toronto Raptors","Utah Jazz","Washington Wizards"].map(name=>({name,sport:"Basketball",kind:"team" as const,aliases:[name.split(" ").slice(-1)[0].toLowerCase()]})),
-  // NHL teams
-  ...["Anaheim Ducks","Boston Bruins","Buffalo Sabres","Calgary Flames","Carolina Hurricanes","Chicago Blackhawks","Colorado Avalanche","Columbus Blue Jackets","Dallas Stars","Detroit Red Wings","Edmonton Oilers","Florida Panthers","Los Angeles Kings","Minnesota Wild","Montreal Canadiens","Nashville Predators","New Jersey Devils","New York Islanders","New York Rangers","Ottawa Senators","Philadelphia Flyers","Pittsburgh Penguins","San Jose Sharks","Seattle Kraken","St. Louis Blues","Tampa Bay Lightning","Toronto Maple Leafs","Utah Mammoth","Vancouver Canucks","Vegas Golden Knights","Washington Capitals","Winnipeg Jets"].map(name=>({name,sport:"Hockey",kind:"team" as const,aliases:[name.split(" ").slice(-1)[0].toLowerCase()]})),
-  // MLB teams
-  ...["Arizona Diamondbacks","Athletics","Atlanta Braves","Baltimore Orioles","Boston Red Sox","Chicago Cubs","Chicago White Sox","Cincinnati Reds","Cleveland Guardians","Colorado Rockies","Detroit Tigers","Houston Astros","Kansas City Royals","Los Angeles Angels","Los Angeles Dodgers","Miami Marlins","Milwaukee Brewers","Minnesota Twins","New York Mets","New York Yankees","Philadelphia Phillies","Pittsburgh Pirates","San Diego Padres","San Francisco Giants","Seattle Mariners","St. Louis Cardinals","Tampa Bay Rays","Texas Rangers","Toronto Blue Jays","Washington Nationals"].map(name=>({name,sport:"Baseball",kind:"team" as const,aliases:[name.split(" ").slice(-1)[0].toLowerCase()]})),
-  // College programs
-  ...["Alabama","Georgia","Ohio State","Michigan","Notre Dame","Texas","Oklahoma","USC","LSU","Clemson","Penn State","Florida State","Oregon","Tennessee","Auburn","Miami","Florida","Duke","North Carolina","Kentucky","Kansas","UConn","Villanova","Gonzaga","UCLA"].map(name=>({name,sport:"College Sports",kind:"team" as const})),
-  // Major players and individual athletes
-  ...["Lionel Messi","Cristiano Ronaldo","Neymar","Kylian Mbappé","Erling Haaland","Mohamed Salah","Kevin De Bruyne","Jude Bellingham","Vinícius Júnior","Lamine Yamal","Harry Kane","Robert Lewandowski","Bukayo Saka","Cole Palmer","Rodri","Diego Maradona","Pelé","Zinedine Zidane","Ronaldinho","Thierry Henry"].map(name=>({name,sport:"Soccer",kind:"player" as const})),
-  ...["LeBron James","Michael Jordan","Stephen Curry","Kevin Durant","Nikola Jokić","Giannis Antetokounmpo","Luka Dončić","Jayson Tatum","Shai Gilgeous-Alexander","Kobe Bryant","Shaquille O'Neal","Larry Bird","Magic Johnson","Tim Duncan","Wilt Chamberlain","Bill Russell"].map(name=>({name,sport:"Basketball",kind:"player" as const})),
-  ...["Patrick Mahomes","Tom Brady","Josh Allen","Lamar Jackson","Joe Burrow","Jalen Hurts","Justin Jefferson","Travis Kelce","Aaron Rodgers","Peyton Manning","Jerry Rice","Lawrence Taylor","Barry Sanders"].map(name=>({name,sport:"Football",kind:"player" as const})),
-  ...["Connor McDavid","Nathan MacKinnon","Auston Matthews","Sidney Crosby","Alexander Ovechkin","Cale Makar","David Pastrňák","Leon Draisaitl","Wayne Gretzky","Mario Lemieux","Bobby Orr","Gordie Howe"].map(name=>({name,sport:"Hockey",kind:"player" as const})),
-  ...["Shohei Ohtani","Aaron Judge","Juan Soto","Mookie Betts","Bobby Witt Jr.","Paul Skenes","Mike Trout","Bryce Harper","Clayton Kershaw","Barry Bonds","Babe Ruth","Willie Mays","Ted Williams"].map(name=>({name,sport:"Baseball",kind:"player" as const})),
-  ...["Jon Jones","Islam Makhachev","Ilia Topuria","Alex Pereira","Max Holloway","Conor McGregor","Khabib Nurmagomedov","Georges St-Pierre","Anderson Silva","Demetrious Johnson","Amanda Nunes","Valentina Shevchenko"].map(name=>({name,sport:"UFC",kind:"player" as const})),
-  ...["Novak Djokovic","Rafael Nadal","Roger Federer","Carlos Alcaraz","Jannik Sinner","Serena Williams","Iga Świątek","Coco Gauff","Aryna Sabalenka"].map(name=>({name,sport:"Tennis",kind:"player" as const})),
-  ...["Lewis Hamilton","Max Verstappen","Charles Leclerc","Lando Norris","Oscar Piastri","Fernando Alonso","Ayrton Senna","Michael Schumacher"].map(name=>({name,sport:"Formula 1",kind:"player" as const})),
-  ...["Tiger Woods","Scottie Scheffler","Rory McIlroy","Jon Rahm","Bryson DeChambeau","Jack Nicklaus","Arnold Palmer"].map(name=>({name,sport:"Golf",kind:"player" as const})),
-  // Leagues and draft subjects
-  {name:"Premier League",sport:"Soccer",kind:"league",prompts:["The Premier League is the strongest soccer league in the world.","Premier League clubs rely too heavily on transfer spending.","The Premier League should introduce a salary cap."]},
-  {name:"Champions League",sport:"Soccer",kind:"league",aliases:["ucl"],prompts:["The Champions League is harder to win than a domestic league title.","The expanded Champions League format improves the competition.","Clubs should prioritize the Champions League over domestic cups."]},
-  {name:"NFL Draft",sport:"Football",kind:"draft",aliases:["football draft"],prompts:["Teams should draft the best player available instead of filling the biggest need.","Quarterbacks with elite physical traits are worth the risk of an early draft pick.","NFL teams trade up too often in the first round.","The NFL Draft should use a lottery for the earliest selections.","A player's college production matters more than combine testing."]},
-  {name:"NBA Draft",sport:"Basketball",kind:"draft",aliases:["basketball draft"],prompts:["NBA teams should value proven production over long-term upside in the draft.","One-and-done prospects are harder to evaluate than experienced college players.","Teams should draft for fit instead of choosing the best player available.","The NBA Draft lottery does not do enough to discourage tanking.","International prospects are still undervalued in the NBA Draft."]},
-  {name:"NHL Draft",sport:"Hockey",kind:"draft",aliases:["hockey draft"],prompts:["NHL teams should draft for upside instead of positional need.","Recent production should matter more than long-term projection in the NHL Draft.","Teams should be more willing to trade first-round picks on draft night.","Junior-league scoring is an unreliable way to compare NHL Draft prospects.","Defensemen are riskier first-round picks than forwards."]},
-  {name:"MLB Draft",sport:"Baseball",kind:"draft",aliases:["baseball draft"],prompts:["MLB teams should prefer college players over high-school prospects early in the draft.","Pitchers are too risky to select first overall.","Tools and projection matter more than current production in the MLB Draft.","Teams should prioritize player development over draft position when rebuilding.","The MLB Draft should allow teams to trade draft picks more freely."]},
-  {name:"College Football Recruiting",sport:"College Sports",kind:"draft",aliases:["recruiting","college recruiting"],prompts:["Recruiting rankings are a reliable predictor of future NFL Draft success.","Transfer-portal success matters more than high-school recruiting rankings.","NIL has improved college football recruiting.","Players should be allowed to enter the draft and return to college if they are not selected."]}
-];
-
-function entityTopics(entity:SearchEntity):SearchTopic[]{
-  const prompts=entity.prompts || (entity.kind==="team"?TEAM_TEMPLATES[entity.sport]:PLAYER_TEMPLATES[entity.sport]) || [];
-  const keywords=[entity.name.toLowerCase(),...(entity.aliases||[]).map(x=>x.toLowerCase())];
-  return prompts.map(take=>({sport:entity.sport,take:take.replaceAll("{name}",entity.name),keywords,category:entity.kind==="team"?"Team":entity.kind==="player"?"Player":entity.kind==="draft"?"Draft":"League"}));
-}
-
-const SEARCH_TOPICS:SearchTopic[] = SEARCH_ENTITIES.flatMap(entityTopics);
-
 function buzz(frequency=520,duration=90){try{const AudioCtx=window.AudioContext||(window as any).webkitAudioContext;const ctx=new AudioCtx();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.frequency.value=frequency;gain.gain.setValueAtTime(.05,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+duration/1000);osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+duration/1000)}catch{}navigator.vibrate?.(35)}
 function clock(seconds:number){return `${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,"0")}`}
 function Highlight({text,quote}:{text:string;quote?:string}){if(!quote)return <>{text}</>;const i=text.toLowerCase().indexOf(quote.toLowerCase());if(i<0)return <>{text}</>;return <>{text.slice(0,i)}<mark className="weak-highlight">{text.slice(i,i+quote.length)}</mark>{text.slice(i+quote.length)}</>}
@@ -251,12 +94,11 @@ export default function Home(){
   const [coinFlipping,setCoinFlipping]=useState(false),[coinResult,setCoinResult]=useState<Side|null>(null),[friendLinkStatus,setFriendLinkStatus]=useState("");
   const [exchanges,setExchanges]=useState<Exchange[]>([]),[loading,setLoading]=useState(false),[history,setHistory]=useState<SavedDebate[]>([]),[tab,setTab]=useState<"arena"|"history">("arena"),[isOnline,setIsOnline]=useState(true);
   const [searchQuery,setSearchQuery]=useState(""),[trending,setTrending]=useState<TrendingDebate>(featuredTrending()),[trendingLoading,setTrendingLoading]=useState(false),[searchGenerating,setSearchGenerating]=useState(false);
-  const trendingQueueRef=useRef<TrendingDebate[]>(FEATURED_TRENDING.filter(item=>item.take!==featuredTrending().take));
   const [theme,setTheme]=useState<Theme>("dark");
   const textareaRef=useRef<HTMLTextAreaElement>(null);
   const play=(f?:number,d?:number)=>{if(sound)buzz(f,d)};
 
-  useEffect(()=>{const savedTheme=localStorage.getItem("debate-sports-theme") as Theme|null;const initial=savedTheme||(window.matchMedia?.("(prefers-color-scheme: light)").matches?"light":"dark");setTheme(initial);document.documentElement.dataset.theme=initial;if("serviceWorker" in navigator)navigator.serviceWorker.register("/sw.js").catch(()=>{});const raw=localStorage.getItem(STORAGE_KEY);if(raw)try{setHistory(JSON.parse(raw))}catch{};const cachedTrending=localStorage.getItem(TRENDING_CACHE_KEY);if(cachedTrending)try{const parsed=JSON.parse(cachedTrending) as TrendingDebate[];if(Array.isArray(parsed)&&parsed.length)trendingQueueRef.current=[...parsed,...trendingQueueRef.current]}catch{}setIsOnline(navigator.onLine);const params=new URLSearchParams(window.location.search);if(params.get("challenge")==="1"){const s=params.get("sport"),t=params.get("take"),d=params.get("difficulty") as Difficulty|null,sd=params.get("side") as Side|null,m=params.get("mode") as DebateMode|null,target=Number(params.get("target"));if(s&&t){setSport(s);setTake(t);if(d)setDifficulty(d);if(sd)setSide(sd);if(m)setMode(m);setChallengeTarget(Number.isFinite(target)&&target>0?target:null);setKind("challenge");setChallengeReady(true)}}const on=()=>setIsOnline(true),off=()=>setIsOnline(false);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off)}},[]);
+  useEffect(()=>{const savedTheme=localStorage.getItem("debate-sports-theme") as Theme|null;const initial=savedTheme||(window.matchMedia?.("(prefers-color-scheme: light)").matches?"light":"dark");setTheme(initial);document.documentElement.dataset.theme=initial;if("serviceWorker" in navigator)navigator.serviceWorker.register("/sw.js").catch(()=>{});const raw=localStorage.getItem(STORAGE_KEY);if(raw)try{setHistory(JSON.parse(raw))}catch{};setIsOnline(navigator.onLine);const params=new URLSearchParams(window.location.search);if(params.get("challenge")==="1"){const s=params.get("sport"),t=params.get("take"),d=params.get("difficulty") as Difficulty|null,sd=params.get("side") as Side|null,m=params.get("mode") as DebateMode|null,target=Number(params.get("target"));if(s&&t){setSport(s);setTake(t);if(d)setDifficulty(d);if(sd)setSide(sd);if(m)setMode(m);setChallengeTarget(Number.isFinite(target)&&target>0?target:null);setKind("challenge");setChallengeReady(true)}}const on=()=>setIsOnline(true),off=()=>setIsOnline(false);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off)}},[]);
   useEffect(()=>{document.documentElement.dataset.theme=theme;localStorage.setItem("debate-sports-theme",theme)},[theme]);
   useEffect(()=>{if(!timerEnabled||!["userOpening","userFollowup"].includes(stage)||timeLeft<=0)return;const id=window.setInterval(()=>setTimeLeft(v=>v-1),1000);return()=>clearInterval(id)},[stage,timerEnabled,timeLeft]);
   useEffect(()=>{if(timeLeft===10)play(350,120);if(timeLeft===0&&["userOpening","userFollowup"].includes(stage))play(220,240)},[timeLeft]);
@@ -265,79 +107,15 @@ export default function Home(){
   const current=exchanges.find(e=>e.round===round);
   const totals=useMemo(()=>exchanges.reduce((a,e)=>({user:a.user+(e.userScore||0),ai:a.ai+(e.aiScore||0)}),{user:0,ai:0}),[exchanges]);
   const stats=useMemo(()=>{const wins=history.filter(h=>h.result==="win").length,losses=history.filter(h=>h.result==="loss").length,draws=history.filter(h=>h.result==="draw").length,total=history.length;let currentStreak=0,bestStreak=0,run=0;for(const h of [...history].reverse()){if(h.result==="win"){run++;bestStreak=Math.max(bestStreak,run)}else run=0}for(const h of history){if(h.result==="win")currentStreak++;else break}const rounds=history.reduce((n,h)=>n+h.exchanges.length,0);const favorite=Object.keys(TAKES).sort((a,b)=>history.filter(h=>h.sport===b).length-history.filter(h=>h.sport===a).length)[0]||"—";let rating=1000;for(const h of [...history].reverse()){const multiplier={easy:0,medium:5,hard:10,impossible:18}[h.difficulty]||0;const margin=Math.max(-3,Math.min(3,h.userTotal-h.aiTotal));rating+=h.result==="win"?20+multiplier+margin:h.result==="loss"?-(16+Math.round(multiplier/2)-margin):3}const userRoundPoints=history.reduce((n,h)=>n+h.exchanges.reduce((a,e)=>a+(e.userScore||0),0),0);const persuasiveness=rounds?Math.round(userRoundPoints/(rounds*10)*100):0;const levels:Difficulty[]=["easy","medium","hard","impossible"];const hardest=[...levels].reverse().find(level=>history.some(h=>h.result==="win"&&h.difficulty===level))||"—";return {wins,losses,draws,total,currentStreak,bestStreak,rounds,favorite,winRate:total?Math.round(wins/total*100):0,rating:Math.max(100,Math.round(rating)),persuasiveness,hardest}},[history]);
-  const searchResults=useMemo(()=>{
-    const q=searchQuery.trim().toLowerCase();
-    if(q.length<2)return [];
-    const tokens=q.split(/\s+/).filter(Boolean);
-    const ranked=SEARCH_TOPICS.map(topic=>{
-      const haystack=[topic.take,topic.sport,...topic.keywords].join(" ").toLowerCase();
-      const exactKeyword=topic.keywords.some(keyword=>keyword.toLowerCase()===q);
-      const startsKeyword=topic.keywords.some(keyword=>keyword.toLowerCase().startsWith(q));
-      const allTokens=tokens.every(token=>haystack.includes(token));
-      const score=exactKeyword?100:startsKeyword?80:allTokens?60:haystack.includes(q)?40:0;
-      return {...topic,score};
-    }).filter(topic=>topic.score>0).sort((a,b)=>b.score-a.score||a.take.localeCompare(b.take));
-    const unique=new Map<string,(typeof ranked)[number]>();
-    for(const topic of ranked){if(!unique.has(topic.take))unique.set(topic.take,topic)}
-    return [...unique.values()].slice(0,10);
-  },[searchQuery]);
+  const searchResults=useMemo(()=>{const q=searchQuery.trim().toLowerCase();if(q.length<2)return [];const found:{sport:string;take:string}[]=[];for(const [searchSport,list] of Object.entries(TAKES)){for(const item of list){if(item.toLowerCase().includes(q)||searchSport.toLowerCase().includes(q)){found.push({sport:searchSport,take:item});if(found.length>=12)return found}}}return found},[searchQuery]);
   const sportStats=useMemo(()=>Object.keys(TAKES).map(s=>{const list=history.filter(h=>h.sport===s);return {sport:s,w:list.filter(h=>h.result==="win").length,l:list.filter(h=>h.result==="loss").length,d:list.filter(h=>h.result==="draw").length}}).filter(x=>x.w+x.l+x.d>0),[history]);
   function persist(next:SavedDebate[]){setHistory(next);localStorage.setItem(STORAGE_KEY,JSON.stringify(next))}
   function randomTake(){const sports=Object.keys(TAKES),s=sports[Math.floor(Math.random()*sports.length)],list=TAKES[s];setKind("custom");setChallengeReady(false);setCoinResult(null);setSport(s);setTake(list[Math.floor(Math.random()*list.length)])}
   function randomTakeForSport(){if(kind!=="custom")return;const list=TAKES[sport]||[];if(!list.length)return;const alternatives=list.filter(item=>item!==take);const pool=alternatives.length?alternatives:list;setTake(pool[Math.floor(Math.random()*pool.length)]);setCoinResult(null);play(620,90)}
   function chooseTake(nextSport:string,nextTake:string){setKind("custom");setChallengeReady(false);setSport(nextSport);setTake(nextTake);setSearchQuery("");setCoinResult(null);play(660,90)}
-  async function refreshTrending(){
-    // Change the card immediately from a local queue, then fetch a new live topic in the background.
-    const queue=trendingQueueRef.current.filter(item=>item.take!==trending.take);
-    const instant=queue[0]||FEATURED_TRENDING.find(item=>item.take!==trending.take)||featuredTrending();
-    setTrending(instant);
-    trendingQueueRef.current=[...queue.slice(1),trending];
-    play(620,70);
-    if(trendingLoading||!isOnline)return;
-    setTrendingLoading(true);
-    try{
-      const data=await api({action:"trending"});
-      const live={sport:data.sport||"Sports",take:data.take,context:data.context,sources:data.sources||[]} as TrendingDebate;
-      if(live.take){
-        trendingQueueRef.current=[live,...trendingQueueRef.current.filter(item=>item.take!==live.take)].slice(0,12);
-        localStorage.setItem(TRENDING_CACHE_KEY,JSON.stringify(trendingQueueRef.current.slice(0,8)));
-      }
-    }catch{}finally{setTrendingLoading(false)}
-  }
-  async function generateSearchDebate(){
-    const query=searchQuery.trim();if(query.length<2||searchGenerating)return;
-    const key=query.toLowerCase();
-    try{
-      const cache=JSON.parse(localStorage.getItem(SEARCH_CACHE_KEY)||"{}") as Record<string,{sport:string;take:string}>;
-      const cached=cache[key];
-      if(cached?.take){chooseTake(cached.sport&&TAKES[cached.sport]?cached.sport:"Soccer",cached.take);return}
-    }catch{}
-    setSearchGenerating(true);
-    try{
-      const data=await api({action:"searchTopic",query});
-      const result={sport:data.sport&&TAKES[data.sport]?data.sport:"Soccer",take:data.take};
-      try{const cache=JSON.parse(localStorage.getItem(SEARCH_CACHE_KEY)||"{}") as Record<string,{sport:string;take:string}>;cache[key]=result;localStorage.setItem(SEARCH_CACHE_KEY,JSON.stringify(Object.fromEntries(Object.entries(cache).slice(-60))))}catch{}
-      chooseTake(result.sport,result.take)
-    }catch{chooseTake(searchResults[0]?.sport||"Soccer",searchResults[0]?.take||`Is ${query} overrated in sports discussions?`)}finally{setSearchGenerating(false)}
-  }
-  function debateTrending(){
-    // Apply the featured topic, switch to online AI, and immediately open round one.
-    // Previously this only changed the form values, which could look like the button did nothing.
-    setKind("custom");
-    setChallengeReady(false);
-    setSport(trending.sport);
-    setTake(trending.take);
-    setMode("online");
-    setSearchQuery("");
-    setCoinResult(null);
-    setRound(1);
-    setExchanges([]);
-    setDraft("");
-    setTimeLeft(timerLength);
-    setTab("arena");
-    setStage("userOpening");
-    play(660,90);
-  }
+  async function refreshTrending(){if(trendingLoading)return;setTrendingLoading(true);try{const data=await api({action:"trending"});setTrending({sport:data.sport||"Sports",take:data.take,context:data.context,sources:data.sources||[]})}catch{setTrending(featuredTrending())}finally{setTrendingLoading(false)}}
+  async function generateSearchDebate(){const query=searchQuery.trim();if(query.length<2||searchGenerating)return;setSearchGenerating(true);try{const data=await api({action:"searchTopic",query});chooseTake(data.sport&&TAKES[data.sport]?data.sport:"Soccer",data.take)}catch{setTake(`Is ${query} overrated in sports discussions?`)}finally{setSearchGenerating(false)}}
+  function debateTrending(){chooseTake(trending.sport,trending.take)}
   function flipSide(){
     if(coinFlipping||kind!=="custom")return;
     setCoinFlipping(true);setCoinResult(null);play(520,90);
@@ -371,12 +149,12 @@ export default function Home(){
     <div className="tabs row between"><div className="row">{(tab==="history"||stage!=="setup")&&<button className="btn ghost" onClick={goBack}>← Back</button>}<button className={`btn ${tab==="arena"?"":"secondary"}`} onClick={()=>setTab("arena")}>Arena</button><button className={`btn ${tab==="history"?"":"secondary"}`} onClick={()=>setTab("history")}>History ({history.length})</button></div><div className="row"><button className="btn ghost theme-toggle" onClick={()=>setTheme(t=>t==="dark"?"light":"dark")}>{theme==="dark"?"☀️ Light mode":"🌙 Dark mode"}</button><span className={`badge ${isOnline?"":"offline-badge"}`}>{isOnline?"Online":"No connection"}</span></div></div>
 
     {tab==="history"?<section className="grid"><div className="grid stats-grid"><div className="card stat"><strong>{stats.wins}</strong><span className="small">Wins</span></div><div className="card stat"><strong>{stats.losses}</strong><span className="small">Losses</span></div><div className="card stat"><strong>{stats.currentStreak}</strong><span className="small">Current streak</span></div><div className="card stat"><strong>{stats.bestStreak}</strong><span className="small">Best streak</span></div><div className="card stat"><strong>{stats.winRate}%</strong><span className="small">Win rate</span></div><div className="card stat"><strong>{stats.rounds}</strong><span className="small">Rounds debated</span></div><div className="card stat rating-stat"><strong>{stats.rating}</strong><span className="small">Debate rating</span></div><div className="card stat"><strong>{stats.persuasiveness}%</strong><span className="small">Persuasiveness</span></div><div className="card stat"><strong>{stats.hardest}</strong><span className="small">Hardest AI beaten</span></div></div><div className="card row between"><div><div className="small">Favorite sport</div><strong>{stats.favorite}</strong></div><div><div className="small">Total debates</div><strong>{stats.total}</strong></div><div><div className="small">Draws</div><strong>{stats.draws}</strong></div></div>{sportStats.length>0&&<div className="card"><h2>Record by sport</h2>{sportStats.map(s=><div className="history-item row between" key={s.sport}><strong>{s.sport}</strong><span className="badge">{s.w}-{s.l}-{s.d}</span></div>)}</div>}<div className="card"><div className="row between"><h2>Past debates</h2><button className="btn ghost" onClick={()=>{if(confirm("Delete all history?"))persist([])}}>Clear</button></div>{history.length===0&&<p className="small">Completed debates are saved on this browser.</p>}{history.map(h=><div className="history-item" key={h.id}><div className="row between"><div><strong>{h.sport}: {h.take}</strong><div className="small">{new Date(h.createdAt).toLocaleString()} · {h.difficulty} · {(h.mode||"online")}</div></div><span className="badge">{h.result.toUpperCase()} · {h.userTotal}-{h.aiTotal}</span></div></div>)}</div></section>
-    :stage==="setup"?<section className="grid">{kind==="daily"&&<div className="card daily-card"><div className="eyebrow">DAILY DEBATE</div><h2 style={{marginTop:8}}>Today’s thesis is locked.</h2><p className="small">You do not choose the topic. A new debate appears each UTC day. There is no leaderboard.</p></div>}{challengeReady&&<div className="card challenge-card"><div className="eyebrow">FRIEND CHALLENGE</div><h2 style={{marginTop:8}}>You were challenged to the same debate.</h2><p className="small">Topic, difficulty, side, and mode are locked to keep the challenge fair.{challengeTarget?` Beat the original score of ${challengeTarget} points.`:""}</p></div>}{kind==="custom"&&<><div className="card trending-card"><div className="row between"><div><div className="eyebrow">🔥 TRENDING DEBATE</div><h2 style={{marginTop:8}}>{trending.take}</h2><p className="small" style={{marginBottom:0}}>{trending.sport} · {trending.context||"A debate based on a major topic in sports right now."}</p></div><span className="badge">Featured</span></div>{trending.sources&&trending.sources.length>0&&<div className="source-list">{trending.sources.slice(0,2).map((source,i)=><a className="source" key={i} href={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div>}<div className="row" style={{marginTop:14}}><button className="btn" onClick={debateTrending}>Debate this</button><button className="btn secondary" disabled={trendingLoading||!isOnline} onClick={refreshTrending}>{trendingLoading?"Refresh live · updating…":"Refresh live"}</button></div></div><div className="card search-card"><label>Search players, teams, leagues, draft topics, or other subjects<input value={searchQuery} placeholder="Try Arsenal, Messi, Bruins, NFL Draft, NBA Draft…" onChange={e=>setSearchQuery(e.target.value)}/></label>{searchQuery.trim().length>=2&&<><div className="search-section-title">Existing debates</div><div className="search-results">{searchResults.length?searchResults.map((result,i)=><button type="button" className="search-result" key={`${result.sport}-${i}`} onClick={()=>chooseTake(result.sport,result.take)}><span>{result.take}</span><small>{result.category||result.sport} · {result.sport}</small></button>):<div className="small">No curated debates matched that search yet.</div>}</div><div className="search-ai-box"><div><strong>Can’t find the right topic?</strong><div className="small">Generate a new debate specifically about “{searchQuery.trim()}”.</div></div><button type="button" className="btn secondary search-generate" disabled={!isOnline||searchGenerating} onClick={generateSearchDebate}>{searchGenerating?"Creating topic…":`Generate new debate`}</button></div></>}</div></>}<div className="mode-picker grid two"><button type="button" className={`card mode-choice ${mode==="online"?"selected":""}`} onClick={()=>setMode("online")}><span className="mode-icon">🤖</span><span><strong>AI Debate (online)</strong><small>Live AI opponent, sources, rating, and competitive scoring.</small></span></button><button type="button" className={`card mode-choice practice-choice ${mode==="offline"?"selected":""}`} onClick={()=>setMode("offline")}><span className="mode-icon">📚</span><span><strong>Practice Mode (offline)</strong><small>Works without OpenAI. Get coaching on evidence, logic, clarity, grammar, and persuasiveness.</small></span></button></div><div className="card grid two"><label>Sport<select value={sport} disabled={kind!=="custom"} onChange={e=>{const s=e.target.value;setSport(s);setTake(TAKES[s][0])}}>{Object.keys(TAKES).map(s=><option key={s}>{s}</option>)}</select></label><label>Difficulty<select value={difficulty} disabled={kind==="challenge"} onChange={e=>setDifficulty(e.target.value as Difficulty)}><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option><option value="impossible">Impossible — adaptive</option></select></label><label>Mode<select value={mode} disabled={kind==="challenge"} onChange={e=>setMode(e.target.value as DebateMode)}><option value="online">Online AI — live research</option><option value="offline">Practice Mode (offline)</option></select></label><div style={{gridColumn:"1 / -1"}}><div className="row between" style={{marginBottom:7}}><span className="small">Debate take{kind==="custom"?` · ${TAKE_COUNTS[sport]} available`:""}</span>{kind==="custom"&&<button type="button" className="btn ghost take-generator" onClick={randomTakeForSport}>🎲 New take</button>}</div><input aria-label="Debate take" value={take} disabled={kind!=="custom"} onChange={e=>setTake(e.target.value)}/></div><div><div className="small">Your side</div><div className="row" style={{marginTop:8}}><button className={`btn ${side==="defend"?"":"secondary"}`} disabled={kind!=="custom"} onClick={()=>setSide("defend")}>Defend</button><button className={`btn ${side==="counter"?"":"secondary"}`} disabled={kind!=="custom"} onClick={()=>setSide("counter")}>Counter</button><button className={`btn ghost coin-button ${coinFlipping?"flipping":""}`} disabled={kind!=="custom"||coinFlipping} onClick={flipSide}>{coinFlipping?"🪙 Flipping…":"🪙 Coin flip"}</button>{coinResult&&<span className="coin-result">You will <strong>{coinResult}</strong></span>}</div></div><div><div className="small">Timer and effects</div><div className="row" style={{marginTop:8}}><button className={`btn ${timerEnabled?"":"secondary"}`} onClick={()=>setTimerEnabled(v=>!v)}>Timer {timerEnabled?"on":"off"}</button><select style={{width:130}} value={timerLength} onChange={e=>{const v=Number(e.target.value);setTimerLength(v);setTimeLeft(v)}}><option value={60}>1 minute</option><option value={120}>2 minutes</option><option value={180}>3 minutes</option></select><button className={`btn ${sound?"":"secondary"}`} onClick={()=>setSound(v=>!v)}>Sound {sound?"on":"off"}</button></div></div></div><div className="row"><button className="btn" onClick={start}>{kind==="challenge"?"Accept friend challenge":mode==="offline"?"Start Practice Mode":"Enter the arena"}</button><button className="btn secondary" onClick={startDaily}>Daily debate</button>{kind==="custom"&&<button className="btn secondary" onClick={randomTake}>Random sport & take</button>}{kind==="custom"&&<button className="btn secondary" onClick={shareFriendLink}>🔗 Friend link</button>}{friendLinkStatus&&<span className="friend-link-status">{friendLinkStatus}</span>}{kind==="daily"&&<button className="btn ghost" onClick={exitDaily}>Exit daily debate</button>}{kind==="challenge"&&<button className="btn ghost" onClick={clearChallenge}>Exit challenge</button>}</div><div className="card small"><strong>{mode==="offline"?"Practice Mode (offline)":"Online AI mode"}</strong>{kind==="custom"&&<div className="small" style={{marginTop:4}}>{TOTAL_TAKES.toLocaleString()} curated takes across {Object.keys(TAKES).length} sports.</div>}<div style={{marginTop:6}}>{mode==="offline"?"Works without OpenAI. After every round, it gives coaching scores and specific ways to improve your evidence, logic, clarity, grammar, and persuasiveness.":"Uses AI research, adaptive rebuttals, and visible sources."}</div></div><div className="card small">Impossible mode adapts to momentum: it presses harder when behind and becomes more disciplined when ahead. Fatigue slightly shortens later answers without making them intentionally inaccurate.</div></section>
+    :stage==="setup"?<section className="grid">{kind==="daily"&&<div className="card daily-card"><div className="eyebrow">DAILY DEBATE</div><h2 style={{marginTop:8}}>Today’s thesis is locked.</h2><p className="small">You do not choose the topic. A new debate appears each UTC day. There is no leaderboard.</p></div>}{challengeReady&&<div className="card challenge-card"><div className="eyebrow">FRIEND CHALLENGE</div><h2 style={{marginTop:8}}>You were challenged to the same debate.</h2><p className="small">Topic, difficulty, side, and mode are locked to keep the challenge fair.{challengeTarget?` Beat the original score of ${challengeTarget} points.`:""}</p></div>}{kind==="custom"&&<><div className="card trending-card"><div className="row between"><div><div className="eyebrow">🔥 TRENDING DEBATE</div><h2 style={{marginTop:8}}>{trending.take}</h2><p className="small" style={{marginBottom:0}}>{trending.sport} · {trending.context||"A debate based on a major topic in sports right now."}</p></div><span className="badge">Featured</span></div>{trending.sources&&trending.sources.length>0&&<div className="source-list">{trending.sources.slice(0,2).map((source,i)=><a className="source" key={i} href={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div>}<div className="row" style={{marginTop:14}}><button className="btn" onClick={debateTrending}>Debate this</button><button className="btn secondary" disabled={trendingLoading||!isOnline} onClick={refreshTrending}>{trendingLoading?"Finding live topic…":"Refresh live"}</button></div></div><div className="card search-card"><label>Search players, teams, leagues, or topics<input value={searchQuery} placeholder="Try Messi, Bruins, quarterback, GOAT…" onChange={e=>setSearchQuery(e.target.value)}/></label>{searchQuery.trim().length>=2&&<><div className="search-results">{searchResults.length?searchResults.map((result,i)=><button type="button" className="search-result" key={`${result.sport}-${i}`} onClick={()=>chooseTake(result.sport,result.take)}><span>{result.take}</span><small>{result.sport}</small></button>):<div className="small">No saved takes matched yet.</div>}</div><button type="button" className="btn secondary search-generate" disabled={!isOnline||searchGenerating} onClick={generateSearchDebate}>{searchGenerating?"Generating debate…":`Generate a debate about “${searchQuery.trim()}”`}</button></>}</div></>}<div className="mode-picker grid two"><button type="button" className={`card mode-choice ${mode==="online"?"selected":""}`} onClick={()=>setMode("online")}><span className="mode-icon">🤖</span><span><strong>AI Debate (online)</strong><small>Live AI opponent, sources, rating, and competitive scoring.</small></span></button><button type="button" className={`card mode-choice practice-choice ${mode==="offline"?"selected":""}`} onClick={()=>setMode("offline")}><span className="mode-icon">📚</span><span><strong>Practice Mode (offline)</strong><small>Works without OpenAI. Get coaching on evidence, logic, clarity, grammar, and persuasiveness.</small></span></button></div><div className="card grid two"><label>Sport<select value={sport} disabled={kind!=="custom"} onChange={e=>{const s=e.target.value;setSport(s);setTake(TAKES[s][0])}}>{Object.keys(TAKES).map(s=><option key={s}>{s}</option>)}</select></label><label>Difficulty<select value={difficulty} disabled={kind==="challenge"} onChange={e=>setDifficulty(e.target.value as Difficulty)}><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option><option value="impossible">Impossible — adaptive</option></select></label><label>Mode<select value={mode} disabled={kind==="challenge"} onChange={e=>setMode(e.target.value as DebateMode)}><option value="online">Online AI — live research</option><option value="offline">Practice Mode (offline)</option></select></label><div style={{gridColumn:"1 / -1"}}><div className="row between" style={{marginBottom:7}}><span className="small">Debate take{kind==="custom"?` · ${TAKE_COUNTS[sport]} available`:""}</span>{kind==="custom"&&<button type="button" className="btn ghost take-generator" onClick={randomTakeForSport}>🎲 New take</button>}</div><input aria-label="Debate take" value={take} disabled={kind!=="custom"} onChange={e=>setTake(e.target.value)}/></div><div><div className="small">Your side</div><div className="row" style={{marginTop:8}}><button className={`btn ${side==="defend"?"":"secondary"}`} disabled={kind!=="custom"} onClick={()=>setSide("defend")}>Defend</button><button className={`btn ${side==="counter"?"":"secondary"}`} disabled={kind!=="custom"} onClick={()=>setSide("counter")}>Counter</button><button className={`btn ghost coin-button ${coinFlipping?"flipping":""}`} disabled={kind!=="custom"||coinFlipping} onClick={flipSide}>{coinFlipping?"🪙 Flipping…":"🪙 Coin flip"}</button>{coinResult&&<span className="coin-result">You will <strong>{coinResult}</strong></span>}</div></div><div><div className="small">Timer and effects</div><div className="row" style={{marginTop:8}}><button className={`btn ${timerEnabled?"":"secondary"}`} onClick={()=>setTimerEnabled(v=>!v)}>Timer {timerEnabled?"on":"off"}</button><select style={{width:130}} value={timerLength} onChange={e=>{const v=Number(e.target.value);setTimerLength(v);setTimeLeft(v)}}><option value={60}>1 minute</option><option value={120}>2 minutes</option><option value={180}>3 minutes</option></select><button className={`btn ${sound?"":"secondary"}`} onClick={()=>setSound(v=>!v)}>Sound {sound?"on":"off"}</button></div></div></div><div className="row"><button className="btn" onClick={start}>{kind==="challenge"?"Accept friend challenge":mode==="offline"?"Start Practice Mode":"Enter the arena"}</button><button className="btn secondary" onClick={startDaily}>Daily debate</button>{kind==="custom"&&<button className="btn secondary" onClick={randomTake}>Random sport & take</button>}{kind==="custom"&&<button className="btn secondary" onClick={shareFriendLink}>🔗 Friend link</button>}{friendLinkStatus&&<span className="friend-link-status">{friendLinkStatus}</span>}{kind==="daily"&&<button className="btn ghost" onClick={exitDaily}>Exit daily debate</button>}{kind==="challenge"&&<button className="btn ghost" onClick={clearChallenge}>Exit challenge</button>}</div><div className="card small"><strong>{mode==="offline"?"Practice Mode (offline)":"Online AI mode"}</strong>{kind==="custom"&&<div className="small" style={{marginTop:4}}>{TOTAL_TAKES.toLocaleString()} curated takes across {Object.keys(TAKES).length} sports.</div>}<div style={{marginTop:6}}>{mode==="offline"?"Works without OpenAI. After every round, it gives coaching scores and specific ways to improve your evidence, logic, clarity, grammar, and persuasiveness.":"Uses AI research, adaptive rebuttals, and visible sources."}</div></div><div className="card small">Impossible mode adapts to momentum: it presses harder when behind and becomes more disciplined when ahead. Fatigue slightly shortens later answers without making them intentionally inaccurate.</div></section>
     :<section className="grid"><div className="card"><div className="row between"><div><div className="eyebrow">{sport} · {difficulty.toUpperCase()} · {mode.toUpperCase()} · {kind.toUpperCase()}</div><h2 style={{marginTop:7}}>{take}</h2><div className="small" style={{marginTop:8}}>You must {side} the take.</div></div>{timerEnabled&&["userOpening","userFollowup"].includes(stage)&&<div className={`timer ${timeLeft<=10?"danger":""}`}>{clock(timeLeft)}</div>}</div><div className="row" style={{marginTop:16}}>{[1,2,3].map(r=><span key={r} className={`round-dot ${r===round?"active":r<round?"done":""}`}/>)}<span className="badge">Round {round}/3</span><span className="badge">Score {totals.user}-{totals.ai}</span></div></div>
 
     {stage==="userOpening"&&<div className="card"><h3>Your opening argument</h3><p className="small">{mode==="offline"?"Make your case. Practice Mode will test your reasoning and coach you after the round.":"Make your case. The AI will research it and attack a specific weak phrase."}</p><textarea ref={textareaRef} value={draft} maxLength={1800} placeholder="State your argument, explain why it matters, and support it with evidence…" onChange={e=>setDraft(e.target.value)}/><div className="row between small"><span>{draft.length}/1800</span><span>{timeLeft===0?"Time expired—submit when ready.":""}</span></div><div className="sticky-submit"><button className="btn" disabled={!draft.trim()} onClick={submitOpening}>Submit opening</button></div></div>}
 
-    {current&&["aiRebuttal","userFollowup","scoring","finished"].includes(stage)&&<><div className="card"><div className="row between"><h3>Your opening</h3><span className="badge">User</span></div><div className="argument" style={{marginTop:12}}><Highlight text={current.userOpening} quote={current.weakQuote}/></div>{current.weakQuote&&<div className="weak-box" style={{marginTop:12}}><strong>Weak point tagged:</strong> “{current.weakQuote}”<div className="small" style={{marginTop:5}}>{current.weakReason}</div></div>}</div><div className="card"><div className="row between"><h3>AI rebuttal</h3><span className="badge">{loading&&stage==="aiRebuttal"?(mode==="offline"?"Preparing…":"Researching…"):"Opponent"}</span></div>{current.aiRebuttal?<div className="argument" style={{marginTop:12}}>{current.aiRebuttal}</div>:<p className="small">{mode==="offline"?"Building an offline practice response…":"Searching and building a sourced response…"}</p>}{current.sources.length>0&&<details className="sources-dropdown"><summary>Sources ({current.sources.length})</summary><div className="source-list compact-source-list">{current.sources.map((s,i)=><a className="source compact-source" key={i} href={s.url} target="_blank" rel="noreferrer"><span>{s.title}</span><span aria-hidden="true">↗</span></a>)}</div></details>}</div></>}
+    {current&&["aiRebuttal","userFollowup","scoring","finished"].includes(stage)&&<><div className="card"><div className="row between"><h3>Your opening</h3><span className="badge">User</span></div><div className="argument" style={{marginTop:12}}><Highlight text={current.userOpening} quote={current.weakQuote}/></div>{current.weakQuote&&<div className="weak-box" style={{marginTop:12}}><strong>Weak point tagged:</strong> “{current.weakQuote}”<div className="small" style={{marginTop:5}}>{current.weakReason}</div></div>}</div><div className="card"><div className="row between"><h3>AI rebuttal</h3><span className="badge">{loading&&stage==="aiRebuttal"?(mode==="offline"?"Preparing…":"Researching…"):"Opponent"}</span></div>{current.aiRebuttal?<div className="argument" style={{marginTop:12}}>{current.aiRebuttal}</div>:<p className="small">{mode==="offline"?"Building an offline practice response…":"Searching and building a sourced response…"}</p>}{current.sources.length>0&&<div className="source-list"><div className="small">Sources used</div>{current.sources.slice(0,2).map((s,i)=><a className="source" key={i} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}</div>}</div></>}
 
     {stage==="userFollowup"&&current&&<div className="card"><h3>Your follow-up rebuttal</h3><p className="small">Answer the AI’s strongest point before the judge scores the round.</p><textarea ref={textareaRef} value={draft} maxLength={1800} placeholder="Directly answer the rebuttal, repair your weak point, and finish the round…" onChange={e=>setDraft(e.target.value)}/><div className="row between small"><span>{draft.length}/1800</span><span>{timeLeft===0?"Time expired—submit when ready.":""}</span></div><div className="sticky-submit"><button className="btn" disabled={!draft.trim()} onClick={submitFollowup}>Send to judge</button></div></div>}
     {stage==="scoring"&&current&&<div className="card">{loading?<p className="small">The anonymized judge is scoring Debater A vs. Debater B…</p>:<><div className="row between"><div><div className="eyebrow">ROUND {round} SCORECARD</div><div className="scoreline">You {current.userScore} — {current.aiScore} AI</div></div><span className="badge">{current.winner?.toUpperCase()}</span></div><p>{current.judgeReason}</p>{mode==="offline"?(()=>{const feedback=buildPracticeFeedback(current.userOpening,current.userFollowup,take,side);return <div className="practice-report"><div className="row between"><h3>How to improve</h3><span className="practice-score">{feedback.overall}/100</span></div><div className="practice-metrics"><div><span>Evidence</span><strong>{feedback.evidence}</strong></div><div><span>Logic</span><strong>{feedback.logic}</strong></div><div><span>Clarity</span><strong>{feedback.clarity}</strong></div><div><span>Persuasiveness</span><strong>{feedback.persuasiveness}</strong></div><div><span>Grammar</span><strong>{feedback.grammar}</strong></div></div><div className="practice-columns"><div><strong>What you did well</strong>{feedback.strengths.map((item,i)=><p className="small" key={i}>✓ {item}</p>)}</div><div><strong>Work on next</strong>{feedback.improvements.map((item,i)=><p className="small" key={i}>→ {item}</p>)}</div></div><details className="rewrite-box"><summary>See a stronger example</summary><p>{feedback.example}</p></details></div>})():<div className="tip"><strong>What would have beaten this:</strong><div style={{marginTop:5}}>{current.tip}</div></div>}<div className="row" style={{marginTop:15}}><button className="btn" onClick={advance}>{round<3?"Start next round":"Reveal final result"}</button></div></>}</div>}

@@ -52,8 +52,7 @@ export async function POST(request: Request) {
   "sport": "one supported sport name",
   "take": "one concise debatable claim"
 }`;
-      // Search-generated topics do not need live web research. Skipping web search makes this request much faster.
-      const response = await client.responses.create({ model, input: prompt, max_output_tokens: 180 });
+      const response = await client.responses.create({ model, tools: [{ type: "web_search" as any }], input: prompt });
       return NextResponse.json(safeJson(response.output_text));
     }
 
