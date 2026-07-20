@@ -88,3 +88,10 @@ The New Take button avoids immediately repeating the current thesis.
 - Searching a pro team shows a **Load top 15** button that fetches current prospect rankings and creates player-specific debate topics.
 - Prospect results are cached in the browser for seven days to improve speed and reduce API usage.
 - The live prospect lookup requires `OPENAI_API_KEY` and internet access.
+
+## Version 16 speed update
+- Prospect rankings start preloading shortly after a matching NHL or MLB team is recognized.
+- Cached rankings display immediately and remain available for up to 30 days.
+- Rankings older than one day refresh quietly in the background.
+- The server caches completed prospect lookups for 24 hours.
+- Debate claims are generated locally, reducing the AI response size and wait time.

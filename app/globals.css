@@ -46,3 +46,22 @@
 .search-filter{border:1px solid var(--border);background:var(--panel-2);color:var(--muted);border-radius:999px;padding:8px 12px;font:inherit;font-size:.8rem;font-weight:700;white-space:nowrap;cursor:pointer}
 .search-filter:hover{color:var(--text);border-color:var(--accent)}
 .search-filter.active{background:var(--accent);border-color:var(--accent);color:white}
+
+/* Debate take category controls next to New Take */
+.take-actions{justify-content:flex-end}
+.take-filter-row{display:flex;gap:6px;flex-wrap:wrap}
+.take-filter{border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:999px;padding:7px 10px;font-size:.76rem;font-weight:800;cursor:pointer}
+.take-filter:hover{color:var(--text);border-color:#64748b}
+.take-filter.active{background:linear-gradient(135deg,#2563eb,#38bdf8);border-color:transparent;color:white}
+.take-reset{padding:8px 11px;font-size:.78rem;white-space:nowrap}
+.take-reset:disabled{opacity:.45}
+@media(max-width:820px){.take-heading{align-items:flex-start}.take-actions{width:100%;justify-content:flex-start}.take-filter-row{width:100%}}
+@media(max-width:560px){.take-actions{gap:7px}.take-filter-row{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px;scrollbar-width:none}.take-filter-row::-webkit-scrollbar{display:none}.take-filter{flex:0 0 auto}.take-reset,.take-generator{flex:1 1 auto}}
+
+.round-score-history{display:grid;gap:10px}
+.mini-scorecard{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border:1px solid var(--border);border-radius:14px;background:var(--card)}
+.mini-scorecard>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mini-scorecard strong{font-size:1.05rem}
+.winner-badge{border-color:rgba(34,197,94,.45)}
+.loser-badge{border-color:rgba(239,68,68,.4)}
+@media(max-width:640px){.mini-scorecard{align-items:flex-start}.mini-scorecard>div{display:grid;gap:3px}}

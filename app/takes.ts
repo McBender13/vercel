@@ -1,24 +1,52 @@
 export type SportTakeMap = Record<string, string[]>;
 
+function isOrganization(name: string): boolean {
+  const n=name.toLowerCase();
+  const organizationWords=[
+    "fc","united","city","arsenal","chelsea","liverpool","barcelona","madrid","milan","juventus","bayern","saint-germain",
+    "celtics","lakers","bulls","warriors","spurs","heat","nuggets","knicks","76ers","pistons",
+    "patriots","chiefs","steelers","cowboys","49ers","packers","giants","eagles","ravens","broncos",
+    "yankees","red sox","dodgers","cubs","mets","braves","astros","phillies","cardinals","guardians",
+    "bruins","canadiens","maple leafs","red wings","oilers","penguins","avalanche","rangers","blackhawks","lightning","devils","flyers","canucks","flames","senators",
+    "racing","ferrari","mercedes","mclaren","williams","lotus","renault",
+    "football","basketball","baseball","the sec","the big ten","the big 12","the acc","playoff","march madness","transfer portal","nil collectives"
+  ];
+  return organizationWords.some(word=>n===word||n.includes(word));
+}
+
 function buildTakes(count: number, marquee: string[], subjects: string[], comparisons: string[], concepts: string[], policies: string[]): string[] {
   const takes = new Set<string>(marquee);
-  const templates = [
-    (a:string,b:string,c:string)=>`${a} should rank ahead of ${b} because of ${c}.`,
-    (a:string,b:string,c:string)=>`${a} had a stronger case than ${b} when judging ${c}.`,
-    (a:string,b:string,c:string)=>`${c} should matter more than trophies when comparing ${a} and ${b}.`,
-    (a:string,b:string,c:string)=>`${a} is overrated when evaluated mainly through ${c}.`,
-    (a:string,b:string,c:string)=>`${a} is underrated when evaluated through ${c}.`,
-    (a:string,b:string,c:string)=>`A shorter elite peak from ${a} is more valuable than the longer career of ${b}.`,
-    (a:string,b:string,c:string)=>`${a} would be more successful than ${b} in a different era because of ${c}.`,
-    (a:string,b:string,c:string)=>`${a} had a greater influence on the sport than ${b}.`,
+  const playerTemplates = [
+    (a:string,b:string,c:string)=>`${a} has a stronger all-time case than ${b} when judging ${c}.`,
+    (a:string,b:string,c:string)=>`${c} is the best argument for choosing ${a} over ${b}.`,
+    (a:string,b:string,c:string)=>`${a}'s peak matters more than ${b}'s longevity.`,
+    (a:string,b:string,c:string)=>`${a} is underrated when the debate focuses on ${c}.`,
+    (a:string,b:string,c:string)=>`${a} would translate better than ${b} to today's game.`,
+    (a:string,b:string,c:string)=>`${b} receives too much credit compared with ${a} because ${c} is overlooked.`,
+    (a:string,b:string,c:string)=>`${a}'s impact on winning is greater than the statistics usually show.`,
+    (a:string,b:string,c:string)=>`A team building for one season should choose ${a} over ${b}.`,
   ];
+  const organizationTemplates = [
+    (a:string,b:string,c:string)=>`${a} has built a stronger modern program than ${b}.`,
+    (a:string,b:string,c:string)=>`${a} has a better championship outlook than ${b}.`,
+    (a:string,b:string,c:string)=>`${a}'s success is more sustainable than ${b}'s because of ${c}.`,
+    (a:string,b:string,c:string)=>`${a} should be considered a better destination than ${b}.`,
+    (a:string,b:string,c:string)=>`${a} has had a greater influence on its sport than ${b}.`,
+    (a:string,b:string,c:string)=>`${c} gives ${a} the stronger organizational identity compared with ${b}.`,
+    (a:string,b:string,c:string)=>`${a} is closer to a championship than ${b}.`,
+    (a:string,b:string,c:string)=>`${a} has managed its long-term future better than ${b}.`,
+  ];
+  const orgPool=[...new Set([...subjects,...comparisons].filter(isOrganization))];
+  const personPool=[...new Set([...subjects,...comparisons].filter(x=>!isOrganization(x)))];
   let i = 0;
   while (takes.size < count) {
     const a = subjects[i % subjects.length];
-    let b = comparisons[Math.floor(i / subjects.length) % comparisons.length];
-    if (a === b) b = comparisons[(Math.floor(i / subjects.length) + 1) % comparisons.length];
-    const c = concepts[Math.floor(i / (subjects.length * comparisons.length)) % concepts.length];
-    const template = templates[Math.floor(i / (subjects.length * comparisons.length * concepts.length)) % templates.length];
+    const org=isOrganization(a);
+    const pool=(org?orgPool:personPool).filter(x=>x!==a);
+    const b=pool.length?pool[Math.floor(i/subjects.length)%pool.length]:comparisons[i%comparisons.length];
+    const c = concepts[Math.floor(i / Math.max(1,subjects.length)) % concepts.length];
+    const templates=org?organizationTemplates:playerTemplates;
+    const template = templates[Math.floor(i / Math.max(1,subjects.length*concepts.length)) % templates.length];
     takes.add(template(a,b,c));
     if (takes.size < count) {
       const policy = policies[i % policies.length];
@@ -27,11 +55,13 @@ function buildTakes(count: number, marquee: string[], subjects: string[], compar
         `${policy} creates more problems than it solves.`,
         `The sport would be better without ${policy}.`,
         `${policy} should be expanded rather than restricted.`,
+        `${policy} benefits contenders more than rebuilding teams.`,
+        `${policy} makes competition less fair.`,
       ];
       takes.add(policyFrames[i % policyFrames.length]);
     }
     i++;
-    if (i > count * 50) throw new Error("Unable to generate enough unique takes");
+    if (i > count * 100) throw new Error("Unable to generate enough unique takes");
   }
   return Array.from(takes).slice(0,count);
 }

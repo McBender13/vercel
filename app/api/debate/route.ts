@@ -3,11 +3,23 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+const prospectCache = new Map<string, { savedAt: number; data: any }>();
+const PROSPECT_CACHE_MS = 24 * 60 * 60 * 1000;
+
 type Source = { title: string; url: string };
 
 function safeJson(text: string) {
   const cleaned = text.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
   return JSON.parse(cleaned);
+}
+
+
+function stripLinks(text: string) {
+  return String(text || "")
+    .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/gi, "$1")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 function collectSources(response: any): Source[] {
@@ -47,7 +59,7 @@ export async function POST(request: Request) {
     if (body.action === "searchTopic") {
       const query = String(body.query || "").trim().slice(0, 120);
       if (!query) return NextResponse.json({ error: "Search query is required." }, { status: 400 });
-      const prompt = `Create one balanced sports debate topic about this search: ${query}. Choose the closest sport from Soccer, Basketball, Football, Hockey, Baseball, UFC, Tennis, Formula 1, Golf, or College Sports. Do not assume rumors are facts. Phrase it as a clear claim that can be defended or opposed. Return ONLY valid JSON:
+      const prompt = `Create one balanced sports debate topic about this search: ${query}. Choose the closest sport from Soccer, Basketball, Football, Hockey, Baseball, UFC, Tennis, Formula 1, Golf, or College Sports. Do not assume rumors are facts. Phrase it as a clear claim that can be defended or opposed. First identify whether the subject is a team, player, prospect, coach, league, or draft topic. Never compare different entity types: teams only with teams, players only with players, prospects only with prospects, and coaches only with coaches. Avoid the repetitive wording “should rank higher than” and use a specific decision, prediction, roster question, tactical question, legacy question, or development question instead. Return ONLY valid JSON:
 {
   "sport": "one supported sport name",
   "take": "one concise debatable claim"
@@ -61,30 +73,35 @@ export async function POST(request: Request) {
       const team = String(body.team || "").trim().slice(0, 80);
       const league = body.league === "NHL" ? "NHL" : "MLB";
       if (!team) return NextResponse.json({ error: "Team is required." }, { status: 400 });
-      const prompt = `Find the current top 15 prospects in the ${team} ${league} organization as of today. Use recent, reputable prospect rankings and official team/league information where possible. A prospect must still have rookie/prospect eligibility and belong to the organization. Return exactly 15 unique players in ranked order. For MLB include position and current minor-league level when available. For NHL include position and current league/team level when available. Create one concise, balanced debate claim for each player. Do not invent players or affiliations. Return ONLY valid JSON:
-{
-  "team": "${team}",
-  "league": "${league}",
-  "prospects": [
-    {"rank":1,"name":"Player name","position":"position","currentLevel":"level or league","take":"clear debatable claim about this player's development, trade value, call-up timing, or future role"}
-  ]
-}`;
-      const response = await client.responses.create({ model, tools: [{ type: "web_search" as any }], input: prompt, max_output_tokens: 2200 });
-      const data = safeJson(response.output_text);
-      return NextResponse.json({ ...data, sources: collectSources(response) });
+      const cacheKey = `${league}:${team.toLowerCase()}`;
+      const cached = prospectCache.get(cacheKey);
+      if (cached && Date.now() - cached.savedAt < PROSPECT_CACHE_MS) {
+        return NextResponse.json(cached.data, { headers: { "X-Prospect-Cache": "HIT" } });
+      }
+      const prompt = `Using one recent reputable team prospect ranking as the main order, list the current top 15 prospects in the ${team} ${league} organization. Verify that each player still belongs to the organization and has prospect/rookie eligibility. Keep fields extremely short. For MLB, currentLevel means AAA, AA, High-A, Single-A, Rookie, or MLB. For NHL, use AHL, NCAA, CHL, Europe, or NHL. Return exactly 15 unique players and ONLY valid JSON:
+{"team":"${team}","league":"${league}","prospects":[{"rank":1,"name":"Player","position":"Pos","currentLevel":"Level"}]}`;
+      // Debate claims are created instantly in the browser, cutting the response size by more than half.
+      const response = await client.responses.create({ model, tools: [{ type: "web_search" as any }], input: prompt, max_output_tokens: 1050 });
+      const data = { ...safeJson(response.output_text), sources: collectSources(response) };
+      prospectCache.set(cacheKey, { savedAt: Date.now(), data });
+      return NextResponse.json(data, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800", "X-Prospect-Cache": "MISS" } });
     }
 
     if (body.action === "opponent") {
-      const pressure = body.difficulty === "impossible"
+      const difficultyGuide = body.difficulty === "impossible"
         ? body.momentum === "aiLosing"
-          ? "You are behind. Increase pressure: challenge assumptions, use sharper comparisons, and directly exploit the weakest sentence. Do not invent facts."
+          ? "Elite opponent: you are behind, so challenge assumptions, use sharp verified comparisons, and exploit the weakest sentence without inventing facts."
           : body.momentum === "aiWinning"
-            ? "You are ahead. Stay disciplined, avoid overreaching, and force the user to answer your strongest evidence."
-            : "The fight is even. Test the user's central assumption and use the strongest verified comparison available."
-        : "Match the requested difficulty without becoming unfair.";
+            ? "Elite opponent: you are ahead, so stay disciplined, defend your strongest evidence, and force a direct answer."
+            : "Elite opponent: test the central assumption and use the strongest verified comparison available."
+        : body.difficulty === "hard"
+          ? "Challenging but beatable opponent: make one strong point and one counterpoint, leave at least one realistic opening for the user, and do not overwhelm them with statistics."
+          : body.difficulty === "medium"
+            ? "Moderate opponent: use clear reasoning and at most one simple statistic or example. Make a noticeable but answerable weakness in your case."
+            : "Beginner opponent: use simple language, one basic objection, no advanced statistics, and leave a clear path for the user to win the round.";
 
       const fatigue = Math.min(2, Math.max(0, Number(body.round || 1) - 1));
-      const prompt = `You are the opponent in a sports debate game.\n\nSport: ${body.sport}\nTake: ${body.take}\nUser side: ${body.side}\nDifficulty: ${body.difficulty}\nRound: ${body.round}\nMomentum: ${body.momentum}\nFatigue level: ${fatigue}/2\nUser opening: ${body.userOpening}\nPrevious rounds: ${JSON.stringify(body.previousRounds || [])}\n\n${pressure}\n\nUse web search for current or historical sports facts. Give a concise rebuttal of 120-190 words. As fatigue rises, remain intelligent but slightly less verbose; do not intentionally make factual mistakes. Identify an exact quote from the user's opening that is weak, overstated, unsupported, or logically flawed. The quote must be copied exactly and be 4-18 words long.\n\nReturn ONLY valid JSON in this shape:\n{\n  "argument": "...",\n  "weakQuote": "exact quote from user",\n  "weakReason": "one-sentence explanation"\n}`;
+      const prompt = `You are the opponent in a sports debate game.\n\nSport: ${body.sport}\nTake: ${body.take}\nUser side: ${body.side}\nDifficulty: ${body.difficulty}\nRound: ${body.round}\nMomentum: ${body.momentum}\nFatigue level: ${fatigue}/2\nUser opening: ${body.userOpening}\nPrevious rounds: ${JSON.stringify(body.previousRounds || [])}\n\n${difficultyGuide}\n\nUse web search for current or historical sports facts. Give a concise rebuttal. Easy: 70-100 words. Medium: 85-120 words. Hard: 100-145 words. Impossible: 125-185 words. As fatigue rises, remain intelligent but slightly less verbose; do not intentionally make factual mistakes. Identify an exact quote from the user's opening that is weak, overstated, unsupported, or logically flawed. The quote must be copied exactly and be 4-18 words long.\n\nDo not put URLs, markdown links, citation markers, source names, or a sources section inside the argument. Sources are displayed separately by the app. Return ONLY valid JSON in this shape:\n{\n  "argument": "...",\n  "weakQuote": "exact quote from user",\n  "weakReason": "one-sentence explanation"\n}`;
 
       const response = await client.responses.create({
         model,
@@ -92,7 +109,7 @@ export async function POST(request: Request) {
         input: prompt
       });
       const data = safeJson(response.output_text);
-      return NextResponse.json({ ...data, sources: collectSources(response) });
+      return NextResponse.json({ ...data, argument: stripLinks(data.argument), sources: collectSources(response) });
     }
 
     if (body.action === "judge") {
