@@ -49,3 +49,11 @@ Offline Practice does not use live web sources or the OpenAI API. The first visi
 
 - **Friend Challenge links:** Finish a debate and tap **Challenge a friend**. The link locks the topic, difficulty, side, and online/offline mode, and includes the score to beat. No account or database is required.
 - **Daily Debate:** A deterministic UTC daily topic is selected from the built-in rotation. The user cannot choose the thesis or side, and there is no leaderboard.
+
+## Latest interface update
+
+- Replaced the old hero wording with “Prove your sports take.”
+- Added an animated, working 50/50 coin flip that assigns Defend or Counter.
+- Added a Friend Link button on the setup screen so a challenge can be shared before playing.
+- Kept private friend score challenges after completed debates.
+- No public leaderboard is included.
