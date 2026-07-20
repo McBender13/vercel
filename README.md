@@ -95,3 +95,11 @@ The New Take button avoids immediately repeating the current thesis.
 - Rankings older than one day refresh quietly in the background.
 - The server caches completed prospect lookups for 24 hours.
 - Debate claims are generated locally, reducing the AI response size and wait time.
+
+## Version 18 competitive update
+
+- Added persistent ELO, highest ELO, per-debate ELO changes, win/loss record, current streak, and best streak.
+- Expanded History with average debate score, average round score, favorite difficulty, and ELO changes for past debates.
+- Added cached Trending search, sport filters, Most Played, Most Liked, and Newest sorting.
+- Victory cards now include ELO, streak, and record and are only available after a win.
+- No profiles, badge system, or GOAT badge were added.
