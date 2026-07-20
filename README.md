@@ -57,3 +57,9 @@ Offline Practice does not use live web sources or the OpenAI API. The first visi
 - Added a Friend Link button on the setup screen so a challenge can be shared before playing.
 - Kept private friend score challenges after completed debates.
 - No public leaderboard is included.
+
+
+## Version 5 additions
+
+- Added **Exit daily debate** so users can return to normal custom debates from Daily Debate mode.
+- Added a **New take** button directly beside the Debate take field. It generates a different take for the currently selected sport.
