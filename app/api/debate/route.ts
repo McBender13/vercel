@@ -52,8 +52,26 @@ export async function POST(request: Request) {
   "sport": "one supported sport name",
   "take": "one concise debatable claim"
 }`;
-      const response = await client.responses.create({ model, tools: [{ type: "web_search" as any }], input: prompt });
+      // Search-generated topics do not need live web research. Skipping web search makes this request much faster.
+      const response = await client.responses.create({ model, input: prompt, max_output_tokens: 180 });
       return NextResponse.json(safeJson(response.output_text));
+    }
+
+    if (body.action === "prospectSystem") {
+      const team = String(body.team || "").trim().slice(0, 80);
+      const league = body.league === "NHL" ? "NHL" : "MLB";
+      if (!team) return NextResponse.json({ error: "Team is required." }, { status: 400 });
+      const prompt = `Find the current top 15 prospects in the ${team} ${league} organization as of today. Use recent, reputable prospect rankings and official team/league information where possible. A prospect must still have rookie/prospect eligibility and belong to the organization. Return exactly 15 unique players in ranked order. For MLB include position and current minor-league level when available. For NHL include position and current league/team level when available. Create one concise, balanced debate claim for each player. Do not invent players or affiliations. Return ONLY valid JSON:
+{
+  "team": "${team}",
+  "league": "${league}",
+  "prospects": [
+    {"rank":1,"name":"Player name","position":"position","currentLevel":"level or league","take":"clear debatable claim about this player's development, trade value, call-up timing, or future role"}
+  ]
+}`;
+      const response = await client.responses.create({ model, tools: [{ type: "web_search" as any }], input: prompt, max_output_tokens: 2200 });
+      const data = safeJson(response.output_text);
+      return NextResponse.json({ ...data, sources: collectSources(response) });
     }
 
     if (body.action === "opponent") {
