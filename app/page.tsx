@@ -115,7 +115,24 @@ export default function Home(){
   function chooseTake(nextSport:string,nextTake:string){setKind("custom");setChallengeReady(false);setSport(nextSport);setTake(nextTake);setSearchQuery("");setCoinResult(null);play(660,90)}
   async function refreshTrending(){if(trendingLoading)return;setTrendingLoading(true);try{const data=await api({action:"trending"});setTrending({sport:data.sport||"Sports",take:data.take,context:data.context,sources:data.sources||[]})}catch{setTrending(featuredTrending())}finally{setTrendingLoading(false)}}
   async function generateSearchDebate(){const query=searchQuery.trim();if(query.length<2||searchGenerating)return;setSearchGenerating(true);try{const data=await api({action:"searchTopic",query});chooseTake(data.sport&&TAKES[data.sport]?data.sport:"Soccer",data.take)}catch{setTake(`Is ${query} overrated in sports discussions?`)}finally{setSearchGenerating(false)}}
-  function debateTrending(){chooseTake(trending.sport,trending.take)}
+  function debateTrending(){
+    // Apply the featured topic, switch to online AI, and immediately open round one.
+    // Previously this only changed the form values, which could look like the button did nothing.
+    setKind("custom");
+    setChallengeReady(false);
+    setSport(trending.sport);
+    setTake(trending.take);
+    setMode("online");
+    setSearchQuery("");
+    setCoinResult(null);
+    setRound(1);
+    setExchanges([]);
+    setDraft("");
+    setTimeLeft(timerLength);
+    setTab("arena");
+    setStage("userOpening");
+    play(660,90);
+  }
   function flipSide(){
     if(coinFlipping||kind!=="custom")return;
     setCoinFlipping(true);setCoinResult(null);play(520,90);
