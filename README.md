@@ -63,3 +63,21 @@ Offline Practice does not use live web sources or the OpenAI API. The first visi
 
 - Added **Exit daily debate** so users can return to normal custom debates from Daily Debate mode.
 - Added a **New take** button directly beside the Debate take field. It generates a different take for the currently selected sport.
+
+
+## Curated take library
+
+This version includes 1,950 debate takes across 10 sports:
+
+- Soccer: 350
+- Basketball: 250
+- Football: 250
+- Baseball: 200
+- Hockey: 250
+- UFC: 200
+- Tennis: 100
+- Formula 1: 100
+- Golf: 100
+- College Sports: 150
+
+The New Take button avoids immediately repeating the current thesis.
