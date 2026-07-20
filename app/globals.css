@@ -3,3 +3,15 @@
 .hero-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.hero-pills span{border:1px solid var(--line);background:rgba(9,12,18,.75);border-radius:999px;padding:8px 11px;color:var(--muted);font-size:.82rem;font-weight:750}.coin-button{min-width:128px}.coin-button.flipping{animation:coinPulse .35s ease-in-out infinite alternate}.coin-result{color:var(--gold);font-size:.86rem;animation:resultPop .25s ease-out}.friend-link-status{color:var(--green);font-weight:800;font-size:.86rem}@keyframes coinPulse{from{transform:rotate(-2deg) scale(.98)}to{transform:rotate(2deg) scale(1.04)}}@keyframes resultPop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
 .take-generator{padding:8px 12px;font-size:.84rem}.daily-card .btn{margin-top:8px}@media(max-width:560px){.take-generator{width:auto;min-height:40px}}
+.trending-card{border-color:rgba(249,115,22,.55);background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(17,22,32,.96))}.search-card{position:relative}.search-results{display:grid;gap:8px;margin-top:12px}.search-result{width:100%;display:flex;justify-content:space-between;gap:14px;align-items:center;text-align:left;border:1px solid var(--line);background:#090c12;color:var(--text);padding:11px 12px;border-radius:11px;cursor:pointer}.search-result:hover{border-color:#64748b}.search-result small{color:var(--gold);white-space:nowrap}.rating-stat{border-color:rgba(245,158,11,.45)}
+
+:root[data-theme="light"]{color-scheme:light;--bg:#f5f8ff;--panel:#ffffff;--panel2:#eaf1ff;--line:#cbd8ee;--text:#14213d;--muted:#5b6b86;--red:#2563eb;--orange:#3b82f6;--gold:#1d4ed8;--green:#15803d;--pink:#dc2626}
+:root[data-theme="light"] body{background:radial-gradient(circle at 10% 5%,rgba(37,99,235,.12),transparent 30rem),radial-gradient(circle at 90% 10%,rgba(14,165,233,.1),transparent 27rem),var(--bg)}
+:root[data-theme="light"] .card{background:rgba(255,255,255,.96);box-shadow:0 12px 36px rgba(30,64,175,.09)}
+:root[data-theme="light"] input,:root[data-theme="light"] textarea,:root[data-theme="light"] select,:root[data-theme="light"] .argument,:root[data-theme="light"] .badge,:root[data-theme="light"] .source,:root[data-theme="light"] .search-result,:root[data-theme="light"] .progress{background:#f8fbff;color:var(--text)}
+:root[data-theme="light"] .btn{background:linear-gradient(135deg,#1d4ed8,#38bdf8)}
+:root[data-theme="light"] .btn.secondary{background:var(--panel2);color:var(--text)}
+:root[data-theme="light"] .daily-card,:root[data-theme="light"] .trending-card{background:linear-gradient(135deg,rgba(59,130,246,.11),rgba(255,255,255,.98))}
+:root[data-theme="light"] .challenge-card{background:linear-gradient(135deg,rgba(14,165,233,.11),rgba(255,255,255,.98))}
+:root[data-theme="light"] .hero-pills span{background:rgba(255,255,255,.8)}
+.theme-toggle{white-space:nowrap}.search-generate{margin-top:12px;width:100%}

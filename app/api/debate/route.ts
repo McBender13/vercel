@@ -32,6 +32,30 @@ export async function POST(request: Request) {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const model = process.env.OPENAI_MODEL || "gpt-5-mini";
 
+    if (body.action === "trending") {
+      const prompt = `Find one major, current sports discussion from the past few days that would make a balanced debate. Choose one sport from Soccer, Basketball, Football, Hockey, Baseball, UFC, Tennis, Formula 1, Golf, or College Sports. Avoid injuries, tragedies, rumors stated as facts, and topics requiring graphic detail. Phrase the topic as one clear debatable claim. Return ONLY valid JSON:
+{
+  "sport": "one supported sport name",
+  "take": "one concise debatable claim",
+  "context": "one sentence explaining why the topic is timely"
+}`;
+      const response = await client.responses.create({ model, tools: [{ type: "web_search" as any }], input: prompt });
+      const data = safeJson(response.output_text);
+      return NextResponse.json({ ...data, sources: collectSources(response) });
+    }
+
+    if (body.action === "searchTopic") {
+      const query = String(body.query || "").trim().slice(0, 120);
+      if (!query) return NextResponse.json({ error: "Search query is required." }, { status: 400 });
+      const prompt = `Create one balanced sports debate topic about this search: ${query}. Choose the closest sport from Soccer, Basketball, Football, Hockey, Baseball, UFC, Tennis, Formula 1, Golf, or College Sports. Do not assume rumors are facts. Phrase it as a clear claim that can be defended or opposed. Return ONLY valid JSON:
+{
+  "sport": "one supported sport name",
+  "take": "one concise debatable claim"
+}`;
+      const response = await client.responses.create({ model, tools: [{ type: "web_search" as any }], input: prompt });
+      return NextResponse.json(safeJson(response.output_text));
+    }
+
     if (body.action === "opponent") {
       const pressure = body.difficulty === "impossible"
         ? body.momentum === "aiLosing"
